@@ -293,15 +293,22 @@ function workflowDispatch(distinctId) {
         if (!config.ref) {
             throw new Error(`workflow_dispatch: An input to 'ref' was not provided`);
         }
-        // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-        const response = yield octokit.rest.actions.createWorkflowDispatch({
+        const payload = {
             owner: config.owner,
             repo: config.repo,
             workflow_id: config.workflow,
             ref: config.ref,
             inputs
-        });
+        };
+        core.info(`Dispatching workflow with payload: ${JSON.stringify(payload)}`);
+        octokit.hook.error('request', (error, _options) => __awaiter(this, void 0, void 0, function* () {
+            core.error(`Request failed: ${error.name} ${error.message}`);
+            throw error;
+        }));
+        // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+        const response = yield octokit.rest.actions.createWorkflowDispatch(payload);
         if (response.status !== 204) {
+            core.error(`Failed to dispatch action, expected 204 but received ${response.status} ${response.data}`);
             throw new Error(`workflow_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`);
         }
         core.info(`✅ Successfully dispatched workflow using workflow_dispatch method:
@@ -479,6 +486,7 @@ function run() {
             const config = (0, action_1.getConfig)();
             api.init(config);
             const backoffOptions = (0, action_1.getBackoffOptions)(config);
+            core.info(`token prefix: ${config.token.slice(0, 3)}`);
             // Display Exponential Backoff Options (if debug mode is enabled)
             core.info(`🔄 Exponential backoff parameters:
     starting-delay: ${backoffOptions.startingDelay}
@@ -494,9 +502,11 @@ function run() {
             }
             // Dispatch the action using the chosen dispatch method
             if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+                core.info(`⌛ Dispatching workflow with distinct-id=${DISTINCT_ID}`);
                 yield api.workflowDispatch(DISTINCT_ID);
             }
             else {
+                core.info(`⌛ Dispatching repository with distinct-id=${DISTINCT_ID}`);
                 yield api.repositoryDispatch(DISTINCT_ID);
             }
             // Exit Early Early if discover is disabled
