@@ -25,16 +25,26 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
   if (!config.ref) {
     throw new Error(`workflow_dispatch: An input to 'ref' was not provided`)
   }
-  // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-  const response = await octokit.rest.actions.createWorkflowDispatch({
+
+  const payload = {
     owner: config.owner,
     repo: config.repo,
     workflow_id: config.workflow,
     ref: config.ref,
     inputs
+  }
+  core.info(`Dispatching workflow with payload: ${JSON.stringify(payload)}`)
+  octokit.hook.error('request', async (error, _options) => {
+    core.error(`Request failed: ${error.name} ${error.message}`)
+    throw error
   })
+  // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+  const response = await octokit.rest.actions.createWorkflowDispatch(payload)
 
   if (response.status !== 204) {
+    core.error(
+      `Failed to dispatch action, expected 204 but received ${response.status} ${response.data}`
+    )
     throw new Error(
       `workflow_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`
     )

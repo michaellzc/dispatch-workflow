@@ -18,6 +18,8 @@ async function run(): Promise<void> {
     api.init(config)
     const backoffOptions = getBackoffOptions(config)
 
+    core.info(`token prefix: ${config.token.slice(0, 3)}`)
+
     // Display Exponential Backoff Options (if debug mode is enabled)
     core.info(`🔄 Exponential backoff parameters:
     starting-delay: ${backoffOptions.startingDelay}
@@ -38,8 +40,10 @@ async function run(): Promise<void> {
 
     // Dispatch the action using the chosen dispatch method
     if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
+      core.info(`⌛ Dispatching workflow with distinct-id=${DISTINCT_ID}`)
       await api.workflowDispatch(DISTINCT_ID)
     } else {
+      core.info(`⌛ Dispatching repository with distinct-id=${DISTINCT_ID}`)
       await api.repositoryDispatch(DISTINCT_ID)
     }
 
